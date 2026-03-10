@@ -237,7 +237,7 @@ export default function AdminStockPage() {
                           <SelectValue placeholder="选择票档" />
                         </SelectTrigger>
                         <SelectContent>
-                          {selectedConcertData.ticketGrades.map((grade) => (
+                          {selectedConcertData.ticketGrades?.map((grade) => (
                             <SelectItem
                               key={grade.id}
                               value={grade.id.toString()}
@@ -336,7 +336,7 @@ export default function AdminStockPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {selectedConcertData.ticketGrades.map((grade) => (
+              {selectedConcertData.ticketGrades?.map((grade) => (
                 <div
                   key={grade.id}
                   className="flex items-center justify-between p-4 rounded-lg border border-border/50"

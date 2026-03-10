@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { AdminSidebar, AdminHeader } from "@/components/layout/AdminSidebar";
-import { useAuthStore } from "@/stores/authStore";
+import { useAuth, useAuthStore } from "@/stores/authStore";
 
 export default function AdminLayout({
   children,
@@ -12,18 +12,10 @@ export default function AdminLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { isAuthenticated, isAdmin, _isInitialized } = useAuthStore();
+  const { isAuthenticated, isAdmin } = useAuth();
+  const _isInitialized = useAuthStore((state) => state._isInitialized);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const hasInitializedRef = useRef(false);
-
-  // Initialize auth state once on mount
-  useEffect(() => {
-    if (!hasInitializedRef.current) {
-      useAuthStore.getState().initialize();
-      hasInitializedRef.current = true;
-    }
-  }, []);
 
   useEffect(() => {
     // Only redirect after initialization is complete
