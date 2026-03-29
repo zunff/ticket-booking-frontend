@@ -37,7 +37,7 @@ export default function OrdersPage() {
     try {
       const response = await getUserOrders(userId, {
         status: statusFilter,
-        page: 1,
+        current: 1,
         size: 100,
       });
       setOrders(response.records || []);

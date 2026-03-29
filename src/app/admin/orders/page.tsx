@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { Search, ShoppingCart, User, Calendar, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,6 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAllOrders } from "@/lib/api/orders";
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/constants";
+import { format, parseDateTime } from "@/lib/utils";
 import type { OrderVO } from "@/types/api";
 import { OrderStatus } from "@/types/enums";
 
@@ -43,7 +43,7 @@ export default function AdminOrdersPage() {
     setIsLoading(true);
     try {
       const response = await getAllOrders({
-        page: 1,
+        current: 1,
         size: 100,
         status: statusFilter,
         orderNo: searchQuery || undefined,
@@ -218,7 +218,7 @@ export default function AdminOrdersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {format(new Date(order.createTime), "MM-dd HH:mm", {
+                        {format(parseDateTime(order.createTime), "MM-dd HH:mm", {
                           locale: zhCN,
                         })}
                       </TableCell>

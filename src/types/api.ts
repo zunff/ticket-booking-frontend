@@ -73,19 +73,41 @@ export interface ConcertVO {
   showTime: string;
   startSaleTime: string;
   endSaleTime: string;
+  purchaseLimit: number;
   status: number;
+  statusText?: string;
   createdAt: string;
 }
 
 /**
- * Concert Detail View Object (with ticket grades)
+ * Concert Detail with Stock View Object
+ * 包含库存信息的演唱会详情，不再需要单独轮询库存
  */
-export interface ConcertDetailVO extends ConcertVO {
-  ticketGrades: TicketGradeWithStockVO[];
+export interface ConcertDetailWithStockVO {
+  id: number;
+  name: string;
+  venue: string;
+  showTime: string;
+  startSaleTime: string;
+  endSaleTime: string;
+  status: number;
+  statusText?: string;
+  purchaseLimit: number;        // 限购数量
+  userPurchasedCount: number;   // 用户已购买数量
+  canPurchase: boolean;         // 是否可购买
+  createdAt: string;
+  grades: TicketGradeWithStockVO[];     // 后端返回的原始字段
+  ticketGrades?: TicketGradeWithStockVO[]; // 前端使用的别名 (API 层会自动映射)
 }
 
 /**
+ * @deprecated 使用 ConcertDetailWithStockVO 替代
+ */
+export type ConcertDetailVO = ConcertDetailWithStockVO;
+
+/**
  * Concert Create/Update Request
+ * 注意：后端使用 grades 字段
  */
 export interface ConcertRequest {
   id?: number;
@@ -94,15 +116,18 @@ export interface ConcertRequest {
   showTime: string;
   startSaleTime: string;
   endSaleTime: string;
-  status: number;
-  ticketGrades: TicketGradeRequest[];
+  purchaseLimit: number;
+  status?: number;  // 创建时不需要，更新时需要
+  grades?: TicketGradeQO[];  // 后端使用 grades
+  ticketGrades?: TicketGradeRequest[];  // 前端使用，API 层会映射到 grades
 }
 
 /**
  * Concert Query Request
+ * 注意：分页参数使用 current 而不是 page
  */
 export interface ConcertQueryRequest {
-  page?: number;
+  current?: number;
   size?: number;
   timeStatus?: 0 | 1 | 2 | 3; // 0-已关闭, 1-开售中, 2-即将开售, 3-已结束
   name?: string;
@@ -124,12 +149,36 @@ export interface TicketGradeWithStockVO {
 }
 
 /**
+ * Ticket Grade View Object (Admin)
+ */
+export interface TicketGradeVO {
+  id: number;
+  concertId: number;
+  gradeName: string;
+  price: number;
+  totalStock: number;
+  isSelectedSeat: number;
+}
+
+/**
  * Ticket Grade Request (for create/update)
  */
 export interface TicketGradeRequest {
   id?: number;
   gradeName: string;
   price: number;
+  totalStock: number;
+  isSelectedSeat: number;
+}
+
+/**
+ * Ticket Grade QO (Query Object for concert create/update)
+ * 注意：price 单位是分（后端），前端使用元
+ */
+export interface TicketGradeQO {
+  id?: number;  // 更新时传入，新增时不传
+  gradeName: string;
+  price: number;  // 单位：分
   totalStock: number;
   isSelectedSeat: number;
 }
@@ -150,23 +199,26 @@ export interface OrderVO {
   quantity: number;
   totalPrice: number;
   status: number;
+  failReason?: string;  // 订单失败原因
   createTime: string;
 }
 
 /**
  * Book Ticket Request
+ * quantity 默认为 1，可不传
  */
 export interface BookTicketRequest {
   concertId: number;
   gradeId: number;
-  quantity: number;
+  quantity?: number;  // 可选，默认为 1
 }
 
 /**
  * Order Query Request
+ * 注意：分页参数使用 current 而不是 page
  */
 export interface OrderQueryRequest {
-  page?: number;
+  current?: number;
   size?: number;
   userId?: number;
   status?: number;
@@ -176,16 +228,39 @@ export interface OrderQueryRequest {
 // ==================== Stock Types ====================
 
 /**
- * Get Stock Response
+ * Stock DTO (Internal)
  */
-export interface GetStockResponse {
-  stock: number;
+export interface StockDTO {
+  id: number;
+  concertId: number;
+  concertName: string;
+  gradeId: number;
+  gradeName: string;
+  price: number;
+  availableStock: number;
+  purchaseLimit: number;
 }
 
 /**
- * Adjust Stock Request
+ * Stock Response for a concert (Map<gradeId, stock>)
+ */
+export type ConcertStockResponse = Record<string, number>;
+
+/**
+ * Adjust Stock Request (Admin)
+ * 注意：后端现在使用 newStock 而不是 quantity + operation
  */
 export interface AdjustStockRequest {
+  concertId: number;
+  gradeId: number;
+  newStock: number;        // 新的库存值
+  remark?: string;         // 调整备注
+}
+
+/**
+ * @deprecated 使用 AdjustStockRequest 替代
+ */
+export interface LegacyAdjustStockRequest {
   concertId: number;
   gradeId: number;
   quantity: number;
@@ -213,9 +288,10 @@ export interface StockLogVO {
 
 /**
  * Stock Log Query Request
+ * 注意：分页参数使用 current 而不是 page
  */
 export interface StockLogQueryRequest {
-  page?: number;
+  current?: number;
   size?: number;
   concertId?: number;
   gradeId?: number;

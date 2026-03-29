@@ -31,8 +31,7 @@ import { useStockStore } from "@/stores/stockStore";
 import { StockIndicator } from "@/components/concert/StockIndicator";
 import { CONCERT_STATUS_LABELS, CONCERT_STATUS_COLORS } from "@/lib/constants";
 import type { ConcertDetailVO } from "@/types/api";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { cn, format, parseDateTime } from "@/lib/utils";
 import { zhCN } from "date-fns/locale";
 
 export default function ConcertDetailPage() {
@@ -140,9 +139,34 @@ export default function ConcertDetailPage() {
     );
   }
 
-  const isOnSale = concert.status === 2;
-  const isEnded = concert.status === 3;
-  const isPending = concert.status === 1;
+  // 根据时间动态计算状态（与列表页一致）
+  // 后端 status: 0-已关闭, 1-正常
+  // 前端动态状态: 根据售票时间判断
+  const now = new Date();
+  const startSaleTime = parseDateTime(concert.startSaleTime);
+  const endSaleTime = parseDateTime(concert.endSaleTime);
+
+  // 如果后端状态是已关闭，直接显示已关闭
+  const isClosed = concert.status === 0;
+  // 根据时间判断动态状态
+  const isUpcoming = !isClosed && now < startSaleTime;
+  const isOnSale = !isClosed && now >= startSaleTime && now < endSaleTime;
+  const isEnded = isClosed || now >= endSaleTime;
+
+  // 动态状态标签
+  const dynamicStatus = isClosed ? "closed" : isUpcoming ? "upcoming" : isOnSale ? "on-sale" : "ended";
+  const DYNAMIC_STATUS_LABELS: Record<string, string> = {
+    "closed": "已关闭",
+    "upcoming": "即将开售",
+    "on-sale": "开售中",
+    "ended": "已结束",
+  };
+  const DYNAMIC_STATUS_COLORS: Record<string, "secondary" | "default" | "success"> = {
+    "closed": "secondary",
+    "upcoming": "default",
+    "on-sale": "success",
+    "ended": "secondary",
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 fade-in">
@@ -167,10 +191,10 @@ export default function ConcertDetailPage() {
                     {concert.name}
                   </h1>
                   <Badge
-                    variant={CONCERT_STATUS_COLORS[concert.status] as any}
+                    variant={DYNAMIC_STATUS_COLORS[dynamicStatus] as any}
                     className="glass-strong"
                   >
-                    {CONCERT_STATUS_LABELS[concert.status]}
+                    {DYNAMIC_STATUS_LABELS[dynamicStatus]}
                   </Badge>
                 </div>
                 <div className="flex flex-wrap gap-4 text-sm sm:text-base text-muted-foreground">
@@ -181,7 +205,7 @@ export default function ConcertDetailPage() {
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-secondary" />
                     <span>
-                      {format(new Date(concert.showTime), "yyyy年MM月dd日 HH:mm", {
+                      {format(parseDateTime(concert.showTime), "yyyy年MM月dd日 HH:mm", {
                         locale: zhCN,
                       })}
                     </span>
@@ -236,9 +260,11 @@ export default function ConcertDetailPage() {
                         isOnSale && grade.availableStock > 0 && "bg-primary text-primary-foreground"
                       )}
                     >
-                      {isEnded
+                      {isClosed
+                        ? "已关闭"
+                        : isEnded
                         ? "已结束"
-                        : isPending
+                        : isUpcoming
                         ? "即将开售"
                         : grade.availableStock === 0
                         ? "已售罄"
@@ -263,7 +289,7 @@ export default function ConcertDetailPage() {
                 <div>
                   <p className="text-muted-foreground">开始</p>
                   <p className="font-medium">
-                    {format(new Date(concert.startSaleTime), "MM月dd日 HH:mm", {
+                    {format(parseDateTime(concert.startSaleTime), "MM月dd日 HH:mm", {
                       locale: zhCN,
                     })}
                   </p>
@@ -275,7 +301,7 @@ export default function ConcertDetailPage() {
                 <div>
                   <p className="text-muted-foreground">结束</p>
                   <p className="font-medium">
-                    {format(new Date(concert.endSaleTime), "MM月dd日 HH:mm", {
+                    {format(parseDateTime(concert.endSaleTime), "MM月dd日 HH:mm", {
                       locale: zhCN,
                     })}
                   </p>
@@ -289,7 +315,7 @@ export default function ConcertDetailPage() {
               <CardTitle className="text-base">购买须知</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm text-muted-foreground">
-              <p>• 每笔订单最多购买5张门票</p>
+              <p>• 每人限购{concert.purchaseLimit || 5}张门票</p>
               <p>• 选座票档需要在线选座</p>
               <p>• 抢票成功后请在规定时间内完成支付</p>
               <p>• 演唱会开始前48小时停止售票</p>
@@ -319,7 +345,7 @@ export default function ConcertDetailPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">票档</span>
                   <span className="font-medium">
-                    {concert.ticketGrades.find((g) => g.id === selectedGrade)
+                    {concert.ticketGrades?.find((g) => g.id === selectedGrade)
                       ?.gradeName}
                   </span>
                 </div>
@@ -327,7 +353,7 @@ export default function ConcertDetailPage() {
                   <span className="text-sm text-muted-foreground">单价</span>
                   <span className="font-medium">
                     ¥
-                    {concert.ticketGrades.find((g) => g.id === selectedGrade)
+                    {concert.ticketGrades?.find((g) => g.id === selectedGrade)
                       ?.price || 0}
                   </span>
                 </div>
@@ -353,15 +379,18 @@ export default function ConcertDetailPage() {
                     size="icon"
                     onClick={() => {
                       const maxStock =
-                        concert.ticketGrades.find((g) => g.id === selectedGrade)
+                        concert.ticketGrades?.find((g) => g.id === selectedGrade)
                           ?.availableStock || 0;
-                      setQuantity((q) => Math.min(5, maxStock, q + 1));
+                      const purchaseLimit = concert.purchaseLimit || 5;
+                      const userPurchased = concert.userPurchasedCount || 0;
+                      const maxCanBuy = Math.max(0, purchaseLimit - userPurchased);
+                      setQuantity((q) => Math.min(maxCanBuy, maxStock, q + 1));
                     }}
                     disabled={
                       quantity >=
                       Math.min(
-                        5,
-                        concert.ticketGrades.find((g) => g.id === selectedGrade)
+                        Math.max(0, (concert.purchaseLimit || 5) - (concert.userPurchasedCount || 0)),
+                        concert.ticketGrades?.find((g) => g.id === selectedGrade)
                           ?.availableStock || 0
                       )
                     }
@@ -370,8 +399,12 @@ export default function ConcertDetailPage() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  每笔订单最多购买5张，当前库存：{" "}
-                  {concert.ticketGrades.find((g) => g.id === selectedGrade)
+                  每人限购{concert.purchaseLimit || 5}张
+                  {(concert.userPurchasedCount || 0) > 0 && (
+                    <>，已购{concert.userPurchasedCount}张</>
+                  )}
+                  ，当前库存：{" "}
+                  {concert.ticketGrades?.find((g) => g.id === selectedGrade)
                     ?.availableStock || 0}
                 </p>
               </div>
@@ -382,7 +415,7 @@ export default function ConcertDetailPage() {
                 <span className="text-2xl font-bold text-primary">
                   ¥
                   {quantity *
-                    (concert.ticketGrades.find((g) => g.id === selectedGrade)
+                    (concert.ticketGrades?.find((g) => g.id === selectedGrade)
                       ?.price || 0)}
                 </span>
               </div>

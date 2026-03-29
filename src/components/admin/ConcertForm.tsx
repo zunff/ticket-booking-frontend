@@ -27,8 +27,30 @@ import { toast } from "sonner";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { createConcert, updateConcert } from "@/lib/api/concerts";
 import { CONCERT_STATUS_LABELS } from "@/lib/constants";
-import type { ConcertRequest, ConcertDetailVO } from "@/types/api";
+import type { ConcertRequest, ConcertDetailWithStockVO } from "@/types/api";
 import { ConcertStatus } from "@/types/enums";
+
+/**
+ * 将后端返回的时间字符串转换为 datetime-local 格式
+ * 后端返回格式: "2026-03-30 07:00:00" (本地时间)
+ * datetime-local 需要格式: "2026-03-30T07:00"
+ */
+function toDatetimeLocal(dateStr: string | undefined): string {
+  if (!dateStr) return "";
+  // 后端返回 "yyyy-MM-dd HH:mm:ss"，直接替换为 datetime-local 格式
+  return dateStr.replace(" ", "T").slice(0, 16);
+}
+
+/**
+ * 将 datetime-local 格式转换为后端期望的格式
+ * datetime-local 格式: "2026-03-30T07:00" (本地时间)
+ * 后端期望格式: "2026-03-30T07:00:00" (ISO 格式，但保持本地时间)
+ */
+function toBackendFormat(datetimeLocal: string): string {
+  if (!datetimeLocal) return "";
+  // datetime-local 格式 "yyyy-MM-ddTHH:mm"，补充秒数
+  return datetimeLocal + ":00";
+}
 
 const ticketGradeSchema = z.object({
   gradeName: z.string().min(1, "请输入票档名称"),
@@ -43,6 +65,7 @@ const concertSchema = z.object({
   showTime: z.string().min(1, "请选择演出时间"),
   startSaleTime: z.string().min(1, "请选择开始售票时间"),
   endSaleTime: z.string().min(1, "请选择结束售票时间"),
+  purchaseLimit: z.number().min(1, "限购数量至少为1"),
   status: z.number(),
   ticketGrades: z.array(ticketGradeSchema).min(1, "至少添加一个票档"),
 });
@@ -53,7 +76,7 @@ interface ConcertFormProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  concert?: ConcertDetailVO | null;
+  concert?: ConcertDetailWithStockVO | null;
 }
 
 export function ConcertForm({
@@ -70,17 +93,13 @@ export function ConcertForm({
     defaultValues: {
       name: concert?.name || "",
       venue: concert?.venue || "",
-      showTime: concert?.showTime
-        ? new Date(concert.showTime).toISOString().slice(0, 16)
-        : "",
-      startSaleTime: concert?.startSaleTime
-        ? new Date(concert.startSaleTime).toISOString().slice(0, 16)
-        : "",
-      endSaleTime: concert?.endSaleTime
-        ? new Date(concert.endSaleTime).toISOString().slice(0, 16)
-        : "",
+      showTime: toDatetimeLocal(concert?.showTime),
+      startSaleTime: toDatetimeLocal(concert?.startSaleTime),
+      endSaleTime: toDatetimeLocal(concert?.endSaleTime),
+      purchaseLimit: concert?.purchaseLimit ?? 5,
       status: concert?.status ?? ConcertStatus.CLOSED,
-      ticketGrades: concert?.ticketGrades.map((g) => ({
+      // API 层已将分转为元，直接使用
+      ticketGrades: concert?.ticketGrades?.map((g) => ({
         gradeName: g.gradeName,
         price: g.price,
         totalStock: g.totalStock,
@@ -101,19 +120,18 @@ export function ConcertForm({
       form.reset({
         name: concert.name,
         venue: concert.venue,
-        showTime: new Date(concert.showTime).toISOString().slice(0, 16),
-        startSaleTime: new Date(concert.startSaleTime).toISOString().slice(
-          0,
-          16
-        ),
-        endSaleTime: new Date(concert.endSaleTime).toISOString().slice(0, 16),
+        showTime: toDatetimeLocal(concert.showTime),
+        startSaleTime: toDatetimeLocal(concert.startSaleTime),
+        endSaleTime: toDatetimeLocal(concert.endSaleTime),
+        purchaseLimit: concert.purchaseLimit ?? 5,
         status: concert.status,
-        ticketGrades: concert.ticketGrades.map((g) => ({
+        // API 层已将分转为元，直接使用
+        ticketGrades: concert.ticketGrades?.map((g) => ({
           gradeName: g.gradeName,
           price: g.price,
           totalStock: g.totalStock,
           isSelectedSeat: g.isSelectedSeat,
-        })),
+        })) || [],
       });
     } else {
       form.reset({
@@ -122,6 +140,7 @@ export function ConcertForm({
         showTime: "",
         startSaleTime: "",
         endSaleTime: "",
+        purchaseLimit: 5,
         status: ConcertStatus.CLOSED,
         ticketGrades: [
           {
@@ -142,9 +161,10 @@ export function ConcertForm({
         id: concert?.id,
         name: data.name,
         venue: data.venue,
-        showTime: new Date(data.showTime).toISOString(),
-        startSaleTime: new Date(data.startSaleTime).toISOString(),
-        endSaleTime: new Date(data.endSaleTime).toISOString(),
+        showTime: toBackendFormat(data.showTime),
+        startSaleTime: toBackendFormat(data.startSaleTime),
+        endSaleTime: toBackendFormat(data.endSaleTime),
+        purchaseLimit: data.purchaseLimit,
         status: data.status,
         ticketGrades: data.ticketGrades,
       };
@@ -278,6 +298,24 @@ export function ConcertForm({
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="purchaseLimit">限购数量 *</Label>
+                <Input
+                  id="purchaseLimit"
+                  type="number"
+                  min={1}
+                  {...form.register("purchaseLimit", { valueAsNumber: true })}
+                  placeholder="每人限购票数"
+                  disabled={isLoading}
+                  className="bg-card/50"
+                />
+                {form.formState.errors.purchaseLimit && (
+                  <p className="text-sm text-destructive">
+                    {form.formState.errors.purchaseLimit.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="startSaleTime">开始售票时间 *</Label>
                 <Input
                   id="startSaleTime"
@@ -396,11 +434,13 @@ export function ConcertForm({
                       <Label className="text-xs">价格（元）</Label>
                       <Input
                         type="number"
+                        step="0.01"
+                        min="0"
                         {...form.register(
                           `ticketGrades.${index}.price`,
                           { valueAsNumber: true }
                         )}
-                        placeholder="0"
+                        placeholder="0.00"
                         disabled={isLoading}
                         className="bg-card/50 h-9"
                       />

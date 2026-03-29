@@ -1,19 +1,12 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import { getStock } from "@/lib/api/stock";
+import { getConcertStocks } from "@/lib/api/stock";
 import { STOCK_POLLING_INTERVAL } from "@/lib/constants";
 
 /**
  * Stock Entry Type
  */
 type StockKey = `${number}_${number}`; // concertId_gradeId
-
-interface StockEntry {
-  concertId: number;
-  gradeId: number;
-  stock: number;
-  lastUpdate: number;
-}
 
 /**
  * Stock Store Interface
@@ -26,10 +19,9 @@ interface StockState {
   // Actions
   setStock: (concertId: number, gradeId: number, stock: number) => void;
   getStock: (concertId: number, gradeId: number) => number | undefined;
-  batchSetStocks: (entries: Array<{ concertId: number; gradeId: number; stock: number }>) => void;
+  batchSetStocks: (concertId: number, stocks: Record<string, number>) => void;
   clearStocks: () => void;
-  startPolling: (concertId: number, gradeIds: number[]) => () => void;
-  stopPolling: () => void;
+  startPolling: (concertId: number) => () => void;
   setLoading: (loading: boolean) => void;
 }
 
@@ -56,10 +48,10 @@ export const useStockStore = create<StockState>()(
         return get().stocks.get(key);
       },
 
-      batchSetStocks: (entries) => {
+      batchSetStocks: (concertId, stocksMap) => {
         const stocks = new Map(get().stocks);
-        entries.forEach(({ concertId, gradeId, stock }) => {
-          const key: StockKey = `${concertId}_${gradeId}`;
+        Object.entries(stocksMap).forEach(([gradeId, stock]) => {
+          const key: StockKey = `${concertId}_${gradeId}` as StockKey;
           stocks.set(key, stock);
         });
         set({ stocks });
@@ -71,38 +63,27 @@ export const useStockStore = create<StockState>()(
 
       setLoading: (isLoading) => set({ isLoading }),
 
-      // Start polling stock updates
-      startPolling: (concertId, gradeIds) => {
-        // Initial fetch
-        gradeIds.forEach(async (gradeId) => {
+      // Start polling stock updates - 使用批量接口获取所有票档库存
+      startPolling: (concertId) => {
+        const fetchStocks = async () => {
           try {
-            const stock = await getStock(concertId, gradeId);
-            get().setStock(concertId, gradeId, stock);
+            const stocksMap = await getConcertStocks(concertId);
+            get().batchSetStocks(concertId, stocksMap);
           } catch (error) {
-            console.error(`Failed to fetch stock for ${concertId}_${gradeId}:`, error);
+            console.error(`Failed to fetch stocks for concert ${concertId}:`, error);
           }
-        });
+        };
+
+        // Initial fetch
+        fetchStocks();
 
         // Set up polling interval
-        const intervalId = setInterval(async () => {
-          gradeIds.forEach(async (gradeId) => {
-            try {
-              const stock = await getStock(concertId, gradeId);
-              get().setStock(concertId, gradeId, stock);
-            } catch (error) {
-              console.error(`Failed to fetch stock for ${concertId}_${gradeId}:`, error);
-            }
-          });
-        }, STOCK_POLLING_INTERVAL);
+        const intervalId = setInterval(fetchStocks, STOCK_POLLING_INTERVAL);
 
         // Return cleanup function
         return () => {
           clearInterval(intervalId);
         };
-      },
-
-      stopPolling: () => {
-        // Polling is stopped by calling the cleanup function returned from startPolling
       },
     }),
     { name: "stock-store" }

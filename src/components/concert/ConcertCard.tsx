@@ -7,8 +7,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConcertVO } from "@/types/api";
-import { cn } from "@/lib/utils";
-import { format as formatDate } from "date-fns";
+import { cn, format, parseDateTime } from "@/lib/utils";
 import { zhCN } from "date-fns/locale";
 
 interface ConcertCardProps {
@@ -34,8 +33,8 @@ export function ConcertCard({ concert }: ConcertCardProps) {
   // 根据时间动态计算状态
   const getDynamicStatus = (): DynamicStatus => {
     const now = new Date();
-    const startSaleTime = new Date(concert.startSaleTime);
-    const endSaleTime = new Date(concert.endSaleTime);
+    const startSaleTime = parseDateTime(concert.startSaleTime);
+    const endSaleTime = parseDateTime(concert.endSaleTime);
 
     if (now < startSaleTime) {
       return "upcoming";
@@ -100,7 +99,7 @@ export function ConcertCard({ concert }: ConcertCardProps) {
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-secondary" />
             <span>
-              {formatDate(new Date(concert.showTime), "yyyy年MM月dd日 HH:mm", {
+              {format(parseDateTime(concert.showTime), "yyyy年MM月dd日 HH:mm", {
                 locale: zhCN,
               })}
             </span>
@@ -111,7 +110,7 @@ export function ConcertCard({ concert }: ConcertCardProps) {
         {dynamicStatus === "upcoming" && (
           <div className="text-xs text-muted-foreground">
             开售时间：{" "}
-            {formatDate(new Date(concert.startSaleTime), "MM月dd日 HH:mm", {
+            {format(parseDateTime(concert.startSaleTime), "MM月dd日 HH:mm", {
               locale: zhCN
             })}
           </div>

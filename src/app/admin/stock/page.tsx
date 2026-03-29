@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { Package, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,13 +33,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { getConcerts } from "@/lib/api/concerts";
+import { getAdminConcerts } from "@/lib/api/concerts";
 import { adjustStock, getStockLogs } from "@/lib/api/stock";
-import type { ConcertDetailVO, StockLogVO } from "@/types/api";
-import { StockOperationType } from "@/types/enums";
+import { format, parseDateTime } from "@/lib/utils";
+import type { ConcertDetailWithStockVO, StockLogVO, AdjustStockRequest } from "@/types/api";
 
 export default function AdminStockPage() {
-  const [concerts, setConcerts] = useState<ConcertDetailVO[]>([]);
+  const [concerts, setConcerts] = useState<ConcertDetailWithStockVO[]>([]);
   const [stockLogs, setStockLogs] = useState<StockLogVO[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedConcert, setSelectedConcert] = useState<number | undefined>(
@@ -52,17 +51,17 @@ export default function AdminStockPage() {
   const [adjustForm, setAdjustForm] = useState({
     concertId: 0,
     gradeId: 0,
-    quantity: 0,
-    operation: "SET" as StockOperationType,
-    reason: "",
+    newStock: 0,
+    remark: "",
   });
   const [isAdjusting, setIsAdjusting] = useState(false);
 
   const fetchConcerts = async () => {
     setIsLoading(true);
     try {
-      const response = await getConcerts({ page: 1, size: 100 });
-      setConcerts(response.records as ConcertDetailVO[]);
+      const response = await getAdminConcerts({ current: 1, size: 100 });
+      // 转换为 ConcertDetailWithStockVO（实际需要再获取详情）
+      setConcerts(response.records as unknown as ConcertDetailWithStockVO[]);
     } catch (error: any) {
       console.error("Failed to fetch concerts:", error);
     } finally {
@@ -74,7 +73,7 @@ export default function AdminStockPage() {
     try {
       const response = await getStockLogs({
         concertId: selectedConcert,
-        page: 1,
+        current: 1,
         size: 50,
       });
       setStockLogs(response.records);
@@ -99,19 +98,13 @@ export default function AdminStockPage() {
       return;
     }
 
-    if (!adjustForm.reason.trim()) {
-      toast.error("请填写调整原因");
-      return;
-    }
-
     setIsAdjusting(true);
     try {
       await adjustStock({
         concertId: adjustForm.concertId,
         gradeId: adjustForm.gradeId,
-        quantity: adjustForm.quantity,
-        operation: adjustForm.operation,
-        reason: adjustForm.reason,
+        newStock: adjustForm.newStock,
+        remark: adjustForm.remark || "管理员调整",
       });
 
       toast.success("库存调整成功");
@@ -119,9 +112,8 @@ export default function AdminStockPage() {
       setAdjustForm({
         concertId: 0,
         gradeId: 0,
-        quantity: 0,
-        operation: "SET",
-        reason: "",
+        newStock: 0,
+        remark: "",
       });
 
       // Refresh data
@@ -219,7 +211,7 @@ export default function AdminStockPage() {
                 <DialogHeader>
                   <DialogTitle>调整库存</DialogTitle>
                   <DialogDescription>
-                    修改指定票档的库存数量
+                    设置指定票档的库存数量
                   </DialogDescription>
                 </DialogHeader>
 
@@ -237,7 +229,7 @@ export default function AdminStockPage() {
                           <SelectValue placeholder="选择票档" />
                         </SelectTrigger>
                         <SelectContent>
-                          {selectedConcertData.ticketGrades?.map((grade) => (
+                          {selectedConcertData.grades?.map((grade) => (
                             <SelectItem
                               key={grade.id}
                               value={grade.id.toString()}
@@ -251,49 +243,33 @@ export default function AdminStockPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label>操作类型 *</Label>
-                      <Select
-                        value={adjustForm.operation}
-                        onValueChange={(v: any) =>
-                          setAdjustForm({ ...adjustForm, operation: v })
-                        }
-                      >
-                        <SelectTrigger className="bg-card/50">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="SET">设置库存</SelectItem>
-                          <SelectItem value="INCREASE">增加库存</SelectItem>
-                          <SelectItem value="DECREASE">减少库存</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>数量 *</Label>
+                      <Label>新库存数量 *</Label>
                       <Input
                         type="number"
                         min="0"
-                        value={adjustForm.quantity}
+                        value={adjustForm.newStock}
                         onChange={(e) =>
                           setAdjustForm({
                             ...adjustForm,
-                            quantity: Number(e.target.value),
+                            newStock: Number(e.target.value),
                           })
                         }
-                        placeholder="输入数量"
+                        placeholder="输入新的库存数量"
                         className="bg-card/50"
                       />
+                      <p className="text-xs text-muted-foreground">
+                        直接设置库存为指定数量
+                      </p>
                     </div>
 
                     <div className="space-y-2">
-                      <Label>调整原因 *</Label>
+                      <Label>调整原因</Label>
                       <Textarea
-                        value={adjustForm.reason}
+                        value={adjustForm.remark}
                         onChange={(e) =>
-                          setAdjustForm({ ...adjustForm, reason: e.target.value })
+                          setAdjustForm({ ...adjustForm, remark: e.target.value })
                         }
-                        placeholder="请说明库存调整的原因"
+                        placeholder="请说明库存调整的原因（可选）"
                         className="bg-card/50 resize-none"
                         rows={3}
                       />
@@ -336,7 +312,7 @@ export default function AdminStockPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {selectedConcertData.ticketGrades?.map((grade) => (
+              {selectedConcertData.grades?.map((grade) => (
                 <div
                   key={grade.id}
                   className="flex items-center justify-between p-4 rounded-lg border border-border/50"
@@ -408,7 +384,7 @@ export default function AdminStockPage() {
                     {stockLogs.map((log) => (
                       <TableRow key={log.id} className="hover:bg-muted/30">
                         <TableCell className="text-sm text-muted-foreground">
-                          {format(new Date(log.createTime), "MM-dd HH:mm", {
+                          {format(parseDateTime(log.createTime), "MM-dd HH:mm", {
                             locale: zhCN,
                           })}
                         </TableCell>

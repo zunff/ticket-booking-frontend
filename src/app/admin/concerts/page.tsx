@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ConcertForm } from "@/components/admin/ConcertForm";
 import { ConcertTable } from "@/components/admin/ConcertTable";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getConcerts, getAdminConcertDetail } from "@/lib/api/concerts";
+import { getAdminConcerts, getAdminConcertDetail } from "@/lib/api/concerts";
 import type { ConcertVO, ConcertDetailVO } from "@/types/api";
 
 export default function AdminConcertsPage() {
@@ -21,8 +21,8 @@ export default function AdminConcertsPage() {
   const fetchConcerts = async () => {
     setIsLoading(true);
     try {
-      const response = await getConcerts({
-        page: 1,
+      const response = await getAdminConcerts({
+        current: 1,
         size: 100,
         name: searchQuery || undefined,
       });

@@ -14,22 +14,24 @@ export type {
 
   // Concert
   ConcertVO,
+  ConcertDetailWithStockVO,
   ConcertDetailVO,
   ConcertRequest,
   ConcertQueryRequest,
 
   // Ticket Grade
   TicketGradeWithStockVO,
+  TicketGradeVO,
   TicketGradeRequest,
 
   // Order
   OrderVO,
   BookTicketRequest,
-  BookTicketResponse,
   OrderQueryRequest,
 
   // Stock
-  GetStockResponse,
+  StockDTO,
+  ConcertStockResponse,
   AdjustStockRequest,
   StockLogVO,
   StockLogQueryRequest,
@@ -66,7 +68,7 @@ export interface BookingFormState {
  * UI State Types
  */
 export interface PaginationState {
-  page: number;
+  current: number;
   size: number;
   total: number;
 }

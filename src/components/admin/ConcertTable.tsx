@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import {
   Music,
@@ -41,6 +40,7 @@ import {
 import { toast } from "sonner";
 import { deleteConcert } from "@/lib/api/concerts";
 import { CONCERT_STATUS_LABELS, CONCERT_STATUS_COLORS } from "@/lib/constants";
+import { format, parseDateTime } from "@/lib/utils";
 import type { ConcertVO } from "@/types/api";
 
 interface ConcertTableProps {
@@ -97,6 +97,7 @@ export function ConcertTable({
                 <TableHead>场馆</TableHead>
                 <TableHead>演出时间</TableHead>
                 <TableHead>售票时间</TableHead>
+                <TableHead className="w-20">限购</TableHead>
                 <TableHead>状态</TableHead>
                 <TableHead className="text-right">操作</TableHead>
               </TableRow>
@@ -121,7 +122,7 @@ export function ConcertTable({
                   <TableCell>
                     <div className="flex items-center gap-1 text-sm">
                       <Calendar className="w-3 h-3 text-primary" />
-                      {format(new Date(concert.showTime), "MM-dd HH:mm", {
+                      {format(parseDateTime(concert.showTime), "MM-dd HH:mm", {
                         locale: zhCN,
                       })}
                     </div>
@@ -131,18 +132,23 @@ export function ConcertTable({
                       <div>
                         开:{" "}
                         {format(
-                          new Date(concert.startSaleTime),
+                          parseDateTime(concert.startSaleTime),
                           "MM-dd HH:mm",
                           { locale: zhCN }
                         )}
                       </div>
                       <div>
                         止:{" "}
-                        {format(new Date(concert.endSaleTime), "MM-dd HH:mm", {
+                        {format(parseDateTime(concert.endSaleTime), "MM-dd HH:mm", {
                           locale: zhCN,
                         })}
                       </div>
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm font-medium">
+                      {concert.purchaseLimit ?? "-"}
+                    </span>
                   </TableCell>
                   <TableCell>
                     <Badge

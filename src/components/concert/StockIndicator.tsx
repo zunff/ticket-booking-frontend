@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getStock } from "@/lib/api/stock";
-import { BOOKING, STOCK_LEVEL_COLORS } from "@/lib/constants";
+import { useStockStore } from "@/stores/stockStore";
+import { BOOKING } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 interface StockIndicatorProps {
@@ -23,39 +23,21 @@ export function StockIndicator({
   showLabel = true,
   compact = false,
 }: StockIndicatorProps) {
-  const [stock, setStock] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const getStock = useStockStore((state) => state.getStock);
+  const startPolling = useStockStore((state) => state.startPolling);
+
+  const stock = getStock(concertId, gradeId);
 
   useEffect(() => {
-    let mounted = true;
+    // 启动轮询并获取清理函数
+    const cleanup = startPolling(concertId);
+    setIsInitialized(true);
 
-    const fetchStock = async () => {
-      try {
-        const availableStock = await getStock(concertId, gradeId);
-        if (mounted) {
-          setStock(availableStock);
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error("Failed to fetch stock:", error);
-        if (mounted) {
-          setIsLoading(false);
-        }
-      }
-    };
+    return cleanup;
+  }, [concertId, startPolling]);
 
-    fetchStock();
-
-    // Poll for stock updates every 3 seconds
-    const interval = setInterval(fetchStock, 3000);
-
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, [concertId, gradeId]);
-
-  if (isLoading) {
+  if (!isInitialized) {
     return compact ? (
       <Skeleton className="h-4 w-16" />
     ) : (
@@ -66,9 +48,9 @@ export function StockIndicator({
     );
   }
 
-  if (stock === null) {
+  if (stock === undefined) {
     return (
-      <span className="text-sm text-muted-foreground">库存加载失败</span>
+      <span className="text-sm text-muted-foreground">库存加载中...</span>
     );
   }
 
@@ -76,14 +58,12 @@ export function StockIndicator({
   const isSoldOut = stock === 0;
   const isLowStock = stock > 0 && stock <= BOOKING.LOW_STOCK_THRESHOLD;
 
-  let levelColor = STOCK_LEVEL_COLORS.HIGH;
-  if (isSoldOut) {
-    levelColor = STOCK_LEVEL_COLORS.OUT;
-  } else if (isLowStock) {
-    levelColor = STOCK_LEVEL_COLORS.LOW;
-  } else if (percentage < 50) {
-    levelColor = STOCK_LEVEL_COLORS.MEDIUM;
-  }
+  // Determine badge variant based on stock level
+  const getBadgeVariant = (): "default" | "secondary" | "destructive" | "outline" => {
+    if (isSoldOut) return "outline";
+    if (isLowStock) return "destructive";
+    return "default";
+  };
 
   return (
     <div className={cn("space-y-1", compact && "flex items-center gap-2")}>
@@ -107,7 +87,7 @@ export function StockIndicator({
 
       {(isSoldOut || isLowStock || compact) && (
         <Badge
-          variant={isSoldOut ? "secondary" : isLowStock ? "destructive" : "outline"}
+          variant={getBadgeVariant()}
           className={cn(
             "text-xs",
             isLowStock && !isSoldOut && "animate-pulse"

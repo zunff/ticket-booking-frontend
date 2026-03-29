@@ -8,8 +8,10 @@ export enum ConcertStatus {
 
 /**
  * Order Status Enum
+ * 订单状态：0-处理中 1-待支付 2-已支付 3-已取消 4-失败
  */
 export enum OrderStatus {
+  PROCESSING = 0, // 处理中
   PENDING = 1,    // 待支付
   PAID = 2,       // 已支付
   CANCELLED = 3,  // 已取消

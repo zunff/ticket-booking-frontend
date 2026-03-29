@@ -81,7 +81,9 @@ apiClient.interceptors.response.use(
             url: error.config?.url,
             method: error.config?.method?.toUpperCase(),
             hasToken: !!error.config?.headers?.Authorization,
-            tokenPreview: error.config?.headers?.Authorization?.substring(0, 30) + "...",
+            tokenPreview: typeof error.config?.headers?.Authorization === 'string'
+              ? error.config.headers.Authorization.substring(0, 30) + "..."
+              : undefined,
             responseData: data,
           });
           if (typeof window !== "undefined") {

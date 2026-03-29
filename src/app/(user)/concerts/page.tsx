@@ -28,11 +28,12 @@ import { getConcerts } from "@/lib/api/concerts";
 import { useConcertStore } from "@/stores/concertStore";
 import type { ConcertVO, ConcertQueryRequest } from "@/types/api";
 import { PAGINATION } from "@/lib/constants";
+import { parseDateTime } from "@/lib/utils";
 
 // 动态状态筛选类型
-type DynamicStatus = "upcoming" | "on-sale" | "ended" | undefined;
+type DynamicStatus = "upcoming" | "on-sale" | "ended" | "all";
 
-const DYNAMIC_STATUS_LABELS: Record<DynamicStatus, string> = {
+const DYNAMIC_STATUS_LABELS: Record<Exclude<DynamicStatus, "all">, string> = {
   upcoming: "即将开售",
   "on-sale": "开售中",
   ended: "已结束",
@@ -43,8 +44,8 @@ export default function ConcertsPage() {
   const { concerts, setConcerts, setPagination, isLoading, setLoading } =
     useConcertStore();
 
-  const [page, setPage] = useState(PAGINATION.DEFAULT_PAGE);
-  const [size, setSize] = useState(PAGINATION.DEFAULT_SIZE);
+  const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
+  const [size, setSize] = useState<number>(PAGINATION.DEFAULT_SIZE);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState<DynamicStatus>("on-sale"); // 默认只显示开售中
@@ -55,8 +56,8 @@ export default function ConcertsPage() {
   // 根据时间动态计算演唱会状态
   const getDynamicStatus = (concert: ConcertVO): DynamicStatus => {
     const now = new Date();
-    const startSaleTime = new Date(concert.startSaleTime);
-    const endSaleTime = new Date(concert.endSaleTime);
+    const startSaleTime = parseDateTime(concert.startSaleTime);
+    const endSaleTime = parseDateTime(concert.endSaleTime);
 
     if (now < startSaleTime) {
       return "upcoming";
@@ -69,7 +70,7 @@ export default function ConcertsPage() {
 
   // 根据筛选条件过滤演唱会
   const filteredConcerts = useMemo(() => {
-    if (!statusFilter) {
+    if (statusFilter === "all") {
       return allConcerts;
     }
     return allConcerts.filter((concert) => getDynamicStatus(concert) === statusFilter);
@@ -80,9 +81,8 @@ export default function ConcertsPage() {
     try {
       // 只获取 status = 1（开售中）的演唱会，不包括已关闭的
       const params: ConcertQueryRequest = {
-        page: 1,
+        current: 1,
         size: 100, // 获取较多数据用于前端筛选
-        status: 1, // 只获取未关闭的演唱会
         name: searchQuery || undefined,
       };
 
@@ -109,7 +109,7 @@ export default function ConcertsPage() {
   }, [filteredConcerts, setConcerts]);
 
   const handleStatusChange = (value: string) => {
-    const newStatus = value === "all" ? undefined : (value as DynamicStatus);
+    const newStatus = value === "all" ? "all" : (value as DynamicStatus);
     setStatusFilter(newStatus);
     setPage(1);
   };

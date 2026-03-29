@@ -3,6 +3,7 @@ import type {
   DashboardStats,
   SalesDataPoint,
   ConcertSalesStats,
+  ConcertVO,
 } from "@/types/api";
 import { API_ENDPOINTS } from "@/lib/constants";
 
@@ -24,7 +25,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
  * @returns Sales data points
  */
 export async function getSalesData(days: number = 30): Promise<SalesDataPoint[]> {
-  return get<SalesDataPoint[]>(`${API_ENDPOINTS.ADMIN_DASHBOARD}/sales?days=${days}`);
+  return get<SalesDataPoint[]>(`${API_ENDPOINTS.ADMIN_DASHBOARD_SALES}?days=${days}`);
 }
 
 /**
@@ -32,5 +33,13 @@ export async function getSalesData(days: number = 30): Promise<SalesDataPoint[]>
  * @returns Concert sales stats
  */
 export async function getConcertSalesStats(): Promise<ConcertSalesStats[]> {
-  return get<ConcertSalesStats[]>(`${API_ENDPOINTS.ADMIN_DASHBOARD}/concerts`);
+  return get<ConcertSalesStats[]>(API_ENDPOINTS.ADMIN_DASHBOARD_CONCERTS);
+}
+
+/**
+ * Get all concerts (Admin only, no pagination)
+ * @returns Concert list
+ */
+export async function getAllConcerts(): Promise<ConcertVO[]> {
+  return get<ConcertVO[]>(API_ENDPOINTS.ADMIN_CONCERTS);
 }

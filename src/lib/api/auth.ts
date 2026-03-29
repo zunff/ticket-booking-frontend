@@ -42,5 +42,5 @@ export async function logout(): Promise<void> {
  * @returns Current user
  */
 export async function getCurrentUser(): Promise<UserVO> {
-  return post<UserVO>("/api/users/me");
+  return post<UserVO>(API_ENDPOINTS.CURRENT_USER);
 }
