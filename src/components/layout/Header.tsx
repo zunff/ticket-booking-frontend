@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Music, Ticket, LogOut, Shield, LayoutDashboard } from "lucide-react";
+import { Music, Ticket, LogOut, Shield, LayoutDashboard, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -70,11 +70,11 @@ export function Header() {
                 <Button variant="ghost" className="gap-2">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                      {user?.username?.charAt(0).toUpperCase() || "U"}
+                      {(user?.nickname || user?.username)?.charAt(0).toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
                   <span className="hidden sm:inline-block max-w-24 truncate">
-                    {user?.username}
+                    {user?.nickname || user?.username}
                   </span>
                   {isAdmin && (
                     <Badge variant="outline" className="ml-1 text-xs">
@@ -87,25 +87,32 @@ export function Header() {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium">{user?.username}</p>
+                    <p className="text-sm font-medium">{user?.nickname || user?.username}</p>
                     <p className="text-xs text-muted-foreground">
-                      {user?.email}
+                      @{user?.username}
                     </p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" className="cursor-pointer">
+                      <User className="w-4 h-4 mr-2" />
+                      个人中心
+                    </Link>
+                  </DropdownMenuItem>
                   {isAdmin && (
                     <>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
                         <Link href="/admin/concerts" className="cursor-pointer">
                           <LayoutDashboard className="w-4 h-4 mr-2" />
                           管理后台
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator />
                     </>
                   )}
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link href="/orders" className="cursor-pointer">
                       <Ticket className="w-4 h-4 mr-2" />

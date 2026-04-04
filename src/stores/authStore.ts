@@ -18,6 +18,7 @@ interface AuthState {
   logout: () => void;
   initialize: () => void;
   isAdmin: () => boolean;
+  updateUser: (user: Partial<UserVO>) => void;
 }
 
 /**
@@ -86,6 +87,18 @@ export const useAuthStore = create<AuthState>()(
         const { user } = get();
         return user?.isAdmin === true;
       },
+
+      updateUser: (userData) => {
+        const { user } = get();
+        if (user) {
+          const updatedUser = { ...user, ...userData };
+          set({ user: updatedUser });
+          // Update localStorage
+          if (typeof window !== "undefined") {
+            localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
+          }
+        }
+      },
     }),
     {
       name: "auth-storage",
@@ -107,7 +120,7 @@ export const useAuthStore = create<AuthState>()(
  * Auth hooks for common use cases
  */
 export const useAuth = () => {
-  const { user, token, isAuthenticated, isAdmin, login, logout } = useAuthStore();
+  const { user, token, isAuthenticated, isAdmin, login, logout, updateUser } = useAuthStore();
 
   return {
     user,
@@ -118,5 +131,6 @@ export const useAuth = () => {
     username: user?.username,
     login,
     logout,
+    updateUser,
   };
 };

@@ -22,6 +22,10 @@ const registerSchema = z
       .min(3, "用户名至少3位")
       .max(20, "用户名最多20位")
       .regex(/^[a-zA-Z0-9_]+$/, "用户名只能包含字母、数字和下划线"),
+    nickname: z
+      .string()
+      .max(20, "昵称最多20位")
+      .optional(),
     password: z
       .string()
       .min(6, "密码至少6位")
@@ -49,6 +53,7 @@ export default function RegisterPage() {
     resolver: zodResolver(registerSchema),
     defaultValues: {
       username: "",
+      nickname: "",
       password: "",
       confirmPassword: "",
       email: "",
@@ -95,18 +100,18 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
     try {
-      const user = await register({
+      const response = await register({
         username: data.username,
+        nickname: data.nickname,
         password: data.password,
         email: data.email,
         phone: data.phone,
       });
 
-      // Auto login after registration - use a dummy token since backend doesn't return one
-      // In production, backend should return a proper token
-      login(user, `Bearer temp-${user.id}`);
+      // 注册成功后自动登录（后端返回token）
+      login(response.user, response.token);
       toast.success("注册成功", {
-        description: `欢迎加入，${user.username}！`,
+        description: `欢迎加入，${response.user.nickname || response.user.username}！`,
       });
       // Redirect after state update
       router.replace("/concerts");
@@ -129,10 +134,10 @@ export default function RegisterPage() {
             </div>
           </div>
           <CardTitle className="text-3xl font-bold text-glow-blue">
-            创建账户
+            霓虹票务
           </CardTitle>
           <CardDescription className="text-base">
-            填写信息以注册新账户
+            创建账户以开始购票之旅
           </CardDescription>
         </CardHeader>
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -150,6 +155,22 @@ export default function RegisterPage() {
               {form.formState.errors.username && (
                 <p className="text-sm text-destructive">
                   {form.formState.errors.username.message}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nickname">昵称（可选）</Label>
+              <Input
+                id="nickname"
+                type="text"
+                placeholder="您的显示昵称"
+                {...form.register("nickname")}
+                disabled={isLoading}
+                className="bg-card/50"
+              />
+              {form.formState.errors.nickname && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.nickname.message}
                 </p>
               )}
             </div>

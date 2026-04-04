@@ -42,6 +42,7 @@ export interface LoginResponse {
 export interface RegisterRequest {
   username: string;
   password: string;
+  nickname?: string;
   email: string;
   phone: string;
 }
@@ -54,11 +55,29 @@ export interface RegisterRequest {
 export interface UserVO {
   id: number;
   username: string;
+  nickname: string;
   email: string;
   phone: string;
   status: number;
   isAdmin: boolean;
   createTime: string;
+}
+
+/**
+ * Update Profile Request
+ */
+export interface UpdateProfileRequest {
+  nickname?: string;
+  email?: string;
+  phone?: string;
+}
+
+/**
+ * Change Password Request
+ */
+export interface ChangePasswordRequest {
+  oldPassword: string;
+  newPassword: string;
 }
 
 // ==================== Concert Types ====================

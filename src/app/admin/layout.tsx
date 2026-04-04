@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { AdminSidebar, AdminHeader } from "@/components/layout/AdminSidebar";
 import { useAuth, useAuthStore } from "@/stores/authStore";
@@ -16,19 +16,37 @@ export default function AdminLayout({
   const _isInitialized = useAuthStore((state) => state._isInitialized);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const hasInitializedRef = useRef(false);
+
+  // Initialize auth state once on mount
+  useEffect(() => {
+    if (!hasInitializedRef.current) {
+      useAuthStore.getState().initialize();
+      hasInitializedRef.current = true;
+    }
+  }, []);
 
   useEffect(() => {
     // Only redirect after initialization is complete
-    if (!_isInitialized || isRedirecting) {
+    if (!_isInitialized) {
+      return;
+    }
+
+    if (isRedirecting) {
       return;
     }
 
     if (!isAuthenticated) {
       setIsRedirecting(true);
-      router.replace("/login");
-    } else if (isAuthenticated && !isAdmin) {
+      // Use setTimeout to ensure state update completes before navigation
+      setTimeout(() => {
+        router.replace("/login");
+      }, 0);
+    } else if (!isAdmin) {
       setIsRedirecting(true);
-      router.replace("/concerts");
+      setTimeout(() => {
+        router.replace("/concerts");
+      }, 0);
     }
   }, [_isInitialized, isAuthenticated, isAdmin, router, isRedirecting]);
 
@@ -46,8 +64,17 @@ export default function AdminLayout({
     );
   }
 
-  // Redirecting
-  if (isRedirecting || !isAuthenticated || !isAdmin) {
+  // Redirecting - show loading state instead of blank
+  if (isRedirecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Not authenticated or not admin - will redirect via useEffect
+  if (!isAuthenticated || !isAdmin) {
     return null;
   }
 

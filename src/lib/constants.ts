@@ -24,6 +24,8 @@ export const API_ENDPOINTS = {
   REGISTER: "/api/users/register",
   LOGOUT: "/api/users/logout",
   CURRENT_USER: "/api/users/me",
+  UPDATE_PROFILE: "/api/users/profile",
+  CHANGE_PASSWORD: "/api/users/password",
 
   // Concerts (演唱会服务)
   CONCERTS: "/api/ticket/concerts",
