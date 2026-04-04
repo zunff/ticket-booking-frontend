@@ -25,17 +25,17 @@ export function StockIndicator({
 }: StockIndicatorProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const getStock = useStockStore((state) => state.getStock);
-  const startPolling = useStockStore((state) => state.startPolling);
+  const subscribePolling = useStockStore((state) => state.subscribePolling);
 
   const stock = getStock(concertId, gradeId);
 
   useEffect(() => {
-    // 启动轮询并获取清理函数
-    const cleanup = startPolling(concertId);
+    // 订阅轮询，使用引用计数确保同一 concertId 只有一个轮询实例
+    const cleanup = subscribePolling(concertId);
     setIsInitialized(true);
 
     return cleanup;
-  }, [concertId, startPolling]);
+  }, [concertId, subscribePolling]);
 
   if (!isInitialized) {
     return compact ? (

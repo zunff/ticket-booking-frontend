@@ -15,13 +15,14 @@ interface StockState {
   // State
   stocks: Map<StockKey, number>;
   isLoading: boolean;
+  pollingInstances: Map<number, { count: number; intervalId: number | null }>;
 
   // Actions
   setStock: (concertId: number, gradeId: number, stock: number) => void;
   getStock: (concertId: number, gradeId: number) => number | undefined;
   batchSetStocks: (concertId: number, stocks: Record<string, number>) => void;
   clearStocks: () => void;
-  startPolling: (concertId: number) => () => void;
+  subscribePolling: (concertId: number) => () => void;
   setLoading: (loading: boolean) => void;
 }
 
@@ -34,6 +35,7 @@ export const useStockStore = create<StockState>()(
       // Initial state
       stocks: new Map(),
       isLoading: false,
+      pollingInstances: new Map(),
 
       // Actions
       setStock: (concertId, gradeId, stock) => {
@@ -63,26 +65,48 @@ export const useStockStore = create<StockState>()(
 
       setLoading: (isLoading) => set({ isLoading }),
 
-      // Start polling stock updates - 使用批量接口获取所有票档库存
-      startPolling: (concertId) => {
-        const fetchStocks = async () => {
-          try {
-            const stocksMap = await getConcertStocks(concertId);
-            get().batchSetStocks(concertId, stocksMap);
-          } catch (error) {
-            console.error(`Failed to fetch stocks for concert ${concertId}:`, error);
-          }
-        };
+      // Subscribe to polling - 使用引用计数确保同一 concertId 只有一个轮询实例
+      subscribePolling: (concertId) => {
+        const pollingInstances = get().pollingInstances;
+        const instance = pollingInstances.get(concertId);
 
-        // Initial fetch
-        fetchStocks();
+        if (instance) {
+          // 已存在轮询实例，增加引用计数
+          pollingInstances.set(concertId, { ...instance, count: instance.count + 1 });
+        } else {
+          // 创建新的轮询实例
+          const fetchStocks = async () => {
+            try {
+              const stocksMap = await getConcertStocks(concertId);
+              get().batchSetStocks(concertId, stocksMap);
+            } catch (error) {
+              console.error(`Failed to fetch stocks for concert ${concertId}:`, error);
+            }
+          };
 
-        // Set up polling interval
-        const intervalId = setInterval(fetchStocks, STOCK_POLLING_INTERVAL);
+          // Initial fetch
+          fetchStocks();
+
+          // Set up polling interval
+          const intervalId = window.setInterval(fetchStocks, STOCK_POLLING_INTERVAL);
+          pollingInstances.set(concertId, { count: 1, intervalId });
+        }
 
         // Return cleanup function
         return () => {
-          clearInterval(intervalId);
+          const current = get().pollingInstances.get(concertId);
+          if (current) {
+            if (current.count <= 1) {
+              // 最后一个订阅者，清除轮询
+              if (current.intervalId) {
+                clearInterval(current.intervalId);
+              }
+              get().pollingInstances.delete(concertId);
+            } else {
+              // 减少引用计数
+              get().pollingInstances.set(concertId, { ...current, count: current.count - 1 });
+            }
+          }
         };
       },
     }),
@@ -106,13 +130,13 @@ export const useStock = (concertId: number, gradeId: number) => {
 };
 
 export const useStocks = () => {
-  const { setStock, batchSetStocks, startPolling, clearStocks } =
+  const { setStock, batchSetStocks, subscribePolling, clearStocks } =
     useStockStore();
 
   return {
     setStock,
     batchSetStocks,
-    startPolling,
+    subscribePolling,
     clearStocks,
   };
 };
