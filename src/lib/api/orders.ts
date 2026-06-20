@@ -3,6 +3,8 @@ import type {
   OrderVO,
   BookTicketRequest,
   OrderQueryRequest,
+  InitiatePayRequest,
+  PayResponse,
   PageResult,
 } from "@/types/api";
 import { API_ENDPOINTS } from "@/lib/constants";
@@ -30,6 +32,20 @@ export async function bookTicket(
   data: BookTicketRequest
 ): Promise<string> {
   return post<string>(API_ENDPOINTS.BOOK_TICKET, data);
+}
+
+/**
+ * 发起支付
+ * 校验订单（归属 / 待支付状态 / 30 分钟支付窗口）后调用支付模块 prepay
+ * @param orderNo 订单号
+ * @param data 支付渠道与方式
+ * @returns 支付响应（payUrl 存在时需跳转/新开窗口）
+ */
+export async function initiatePayment(
+  orderNo: string,
+  data: InitiatePayRequest
+): Promise<PayResponse> {
+  return post<PayResponse>(API_ENDPOINTS.ORDER_PAY(orderNo), data);
 }
 
 /**

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Ticket, Music, Calendar, AlertCircle, Loader2, CheckCircle, XCircle, Clock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,7 @@ function getStatusIcon(status: number) {
 }
 
 export function OrderCard({ order }: OrderCardProps) {
+  const router = useRouter();
   const statusColor = ORDER_STATUS_COLORS[order.status] || "default";
   const statusLabel = ORDER_STATUS_LABELS[order.status] || "未知";
   const statusBg = ORDER_STATUS_BG[order.status] || "";
@@ -121,7 +123,11 @@ export function OrderCard({ order }: OrderCardProps) {
             })}
           </div>
           {order.status === 1 && (
-            <Button size="sm" variant="outline">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => router.push(`/orders/${order.orderNo}/pay`)}
+            >
               去支付
             </Button>
           )}

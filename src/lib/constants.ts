@@ -41,6 +41,7 @@ export const API_ENDPOINTS = {
   BOOK_TICKET: "/api/order/book",
   USER_ORDERS: (userId: number) => `/api/order/user/${userId}`,
   ORDER_DETAIL: (orderNo: string) => `/api/order/${orderNo}`,
+  ORDER_PAY: (orderNo: string) => `/api/order/${orderNo}/pay`,
 
   // Admin - Concerts (演唱会服务)
   ADMIN_CONCERTS: "/api/ticket/admin/concerts",
@@ -99,6 +100,32 @@ export const BOOKING = {
   MAX_QUANTITY: 5,
   LOW_STOCK_THRESHOLD: 10,
 } as const;
+
+/**
+ * 支付渠道配置
+ * channel 为后端 PayChannel.code，payMode 为后端 PayMode.code
+ * 后端价格单位是分，金额由订单总价决定，前端无需换算
+ */
+export const PAY_CHANNELS = [
+  {
+    channel: "mock",
+    payMode: "mock_page_confirm",
+    label: "模拟支付",
+    desc: "跳转模拟收银台，手动确认支付结果（测试）",
+  },
+  {
+    channel: "wechatpay",
+    payMode: "wechat_native",
+    label: "微信支付",
+    desc: "微信扫码支付",
+  },
+  {
+    channel: "alipay",
+    payMode: "alipay_web",
+    label: "支付宝",
+    desc: "支付宝PC网站支付",
+  },
+] as const;
 
 /**
  * Toast Duration (milliseconds)

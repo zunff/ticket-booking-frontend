@@ -244,6 +244,33 @@ export interface OrderQueryRequest {
   orderNo?: string;
 }
 
+// ==================== Payment Types ====================
+
+/**
+ * 发起支付请求
+ * channel 为支付渠道 code（wechatpay / alipay / mock）
+ * payMode 可选，不传时由后端按渠道默认方式推断
+ */
+export interface InitiatePayRequest {
+  channel: string;
+  payMode?: string;
+  openId?: string;
+  returnUrl?: string;
+}
+
+/**
+ * 发起支付响应
+ * payUrl 存在时（如模拟收银台 / 微信 Native / 支付宝 Web）需跳转/新开窗口
+ * payParams 为 JSAPI 等方式所需参数
+ */
+export interface PayResponse {
+  paymentNo: string;
+  channelTradeNo?: string;
+  payMode?: string;
+  payUrl?: string;
+  payParams?: Record<string, string>;
+}
+
 // ==================== Stock Types ====================
 
 /**

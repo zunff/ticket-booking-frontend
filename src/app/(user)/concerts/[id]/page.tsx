@@ -97,16 +97,14 @@ export default function ConcertDetailPage() {
         quantity,
       });
 
-      toast.success("抢票成功！", {
-        description: `订单号：${orderNo}`,
+      toast.success("下单成功！", {
+        description: "订单号：" + orderNo + "，请尽快完成支付",
       });
 
       setShowBookingDialog(false);
 
-      // Redirect to orders page after 2 seconds
-      setTimeout(() => {
-        router.push("/orders");
-      }, 2000);
+      // 下单成功后进入支付步骤
+      router.push(`/orders/${orderNo}/pay`);
     } catch (error: any) {
       toast.error("抢票失败", {
         description: error.message || "库存不足或系统繁忙，请稍后再试",
